@@ -90,8 +90,8 @@ class Song:
             else:
                 self.byte_string = byte_string
                 self._bpm = int(byte_string[:2], base=16)
-                for i in range(0, int(len(byte_string[2:]) / 12)):
-                    for j in range(0, 2):
+                for i in range(int(len(byte_string[2:]) / 12)):
+                    for j in range(2):
                         tone_val = int((byte_string[2 + j * 6  + i * 12:])[:2], base=16)
                         beat_val = int((byte_string[4 + j * 6  + i * 12:])[:4], base=16)
                         if(beat_val == 0): continue
@@ -105,14 +105,16 @@ class Song:
             raise ValueError("Voice num must be 1 or 2") 
         if note > 61 or note < 0:
             raise ValueError("Note argument exceeds 2-7 octave range")
-        if octave < 2 or octave > 7:
-            raise ValueError("Octave argument exceeds 2-7 range")
         if length > 0xffff:
             raise ValueError("Note Length argument is too long")
         if length < 0:
             raise ValueError("Note Length cannot be negative")
-        if octave == None and note != TONAL_VAL.REST:
+        
+        #Handle the octave argument
+        if(octave == None and note != TONAL_VAL.REST):
             raise ValueError("Octave must be specified for non rest-note")
+        elif(octave != None and (octave < 2 or octave > 7)):
+            raise ValueError("Octave argument exceeds 2-7 range")
 
         #Condition for rest notes
         if note == TONAL_VAL.REST: self._voices[voice_num - 1].append([note, length])
@@ -158,8 +160,8 @@ class Song:
 
         #Print each segment value
         max_len = max(len(self._voices[0]), len(self._voices[1]))
-        for i in range(0, max_len):
-            for j in range(0, 2):
+        for i in range(max_len):
+            for j in range(2):
                 #Print Segment number
                 if(j == 0): print(f"Segment {i + 1}: ", end='')
 
@@ -195,7 +197,7 @@ class Song:
                     print(f"Duration-{self._voices[j][i][1]} 32 Notes".ljust(18),
                     end='')
                 
-                if(j == 1): print(end='\n')
+            print(end='\n')
 
     #Method to return a hex dump representation of the song
     def hex_dump(self):
@@ -207,15 +209,15 @@ class Song:
 
         #Iterate through segments
         max_len = max(len(self._voices[0]), len(self._voices[1]))
-        for i in range(0, max_len):
+        for i in range(max_len):
             #Print each segment
             print(f"Segment {i + 1}:", end='')
-            for j in range(0, 2):
+            for j in range(2):
                 if len(self._voices[j]) - 1 < i:
                     print(f" 00 0000", end='')
                     byte_string += "000000"
                     continue
-                for k in range(0, 2):
+                for k in range(2):
                     if k == 0:
                         #Convert tone value to hex
                         byte_string += self._voices[j][i][k].to_bytes().hex()
