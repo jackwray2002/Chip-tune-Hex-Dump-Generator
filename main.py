@@ -92,10 +92,13 @@ class Song:
                 self._bpm = int(byte_string[:2], base=16)
                 for i in range(int(len(byte_string[2:]) / 12)):
                     for j in range(2):
-                        tone_val = int((byte_string[2 + j * 6  + i * 12:])[:2], base=16)
-                        beat_val = int((byte_string[4 + j * 6  + i * 12:])[:4], base=16)
+                        tone_val = int((
+                        byte_string[2 + j * 6 + i * 12:])[:2], base=16)
+                        
+                        beat_val = int((
+                        byte_string[4 + j * 6 + i * 12:])[:4], base=16)
+                        
                         if(beat_val == 0): continue
-
                         self._voices[j].append([tone_val, beat_val])
 
     #Method to add a note value segment to either voice
@@ -191,10 +194,10 @@ class Song:
 
                 #Note duration print
                 if(remainder(log2(self._voices[j][i][1]), 1) == 0):
-                    print(f"Duration-{BEAT(self._voices[j][i][1])._name_}".ljust(18),
+                    print(f"Duration-{BEAT(self._voices[j][i][1])._name_}".ljust(22),
                     end='')
                 else:
-                    print(f"Duration-{self._voices[j][i][1]} 32 Notes".ljust(18),
+                    print(f"Duration-{self._voices[j][i][1]}x32 Notes".ljust(22),
                     end='')
                 
             print(end='\n')
