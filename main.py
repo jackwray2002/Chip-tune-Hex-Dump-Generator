@@ -9,8 +9,8 @@
 #
 #FORMAT:
 #    BPM(1 BYTE) 
-#    VOICE1: VALUE(1 BYTE) BEAT_LENGTH(2 BYTE)
-#    VOICE2: VALUE(1 BYTE) BEAT_LENGTH(2 BYTE)
+#    VOICE1: VALUE(1 BYTE) BEAT_LENGTH(1 BYTE)
+#    VOICE2: VALUE(1 BYTE) BEAT_LENGTH(1 BYTE)
 #    ...
 #
 #EXAMPLE: 
@@ -18,6 +18,7 @@
 #   Segment 1: | Voice 1 - C#4, Quarter Note       | Voice 2 - Rest, Eight Note
 #   Segment 2: | Voice 1 - G7,  Thirty-second Note | Voice 2 - C2,   Whole Note
 #   ---------------------------------------------------------------------------------
+#   >>> x = Song(bpm = 120)
 #   >>> x.push_segment(1, TONAL_VAL.C_SHARP, BEAT.NOTE_4, 4)
 #   >>> x.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_8, 4)
 #   >>> x.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 4)
@@ -25,19 +26,17 @@
 #   >>> x.push_segment(2, TONAL_VAL.A_SHARP, BEAT.NOTE_8, 2)
 #   >>> x.print_song()
 #   BPM: 120
-#   Segment 1: Voice 1: C_SHARP   Octave-4  Duration-NOTE_4   Voice 2: REST                Duration-NOTE_8
-#   Segment 2: Voice 1: G_NATURAL Octave-4  Duration-NOTE_32  Voice 2: C_NATURAL Octave-2  Duration-NOTE_1
-#   Segment 3: Voice 1: Empty                                 Voice 2: A_SHARP   Octave-2  Duration-NOTE_8
+#   Segment 1: Voice 1: C_SHARP   Octave-4  Duration-NOTE_4       Voice 2: REST                Duration-NOTE_8
+#   Segment 2: Voice 1: G_NATURAL Octave-4  Duration-NOTE_32      Voice 2: C_NATURAL Octave-2  Duration-NOTE_1
+#   Segment 3: Voice 1: Empty                                     Voice 2: A_SHARP   Octave-2  Duration-NOTE_8
 #   >>> print(x.hex_dump())
 #   
 #   BPM: 78
-#   Segment 1: 19 0008 3d 0004
-#   Segment 2: 1f 0001 00 0020
-#   Segment 3: 00 0000 0a 0004
+#   Segment 1: 19 08 3d 04
+#   Segment 2: 1f 01 00 20
+#   Segment 3: 00 00 0a 04
 #
-#   781900083d00041f00010000200000000a0004
-#
-#
+#   bytearray(b'x\x19\x08=\x04\x1f\x01\x00 \x00\x00\n\x04')
 
 from enum import IntEnum, auto
 from math import floor, remainder, log2
@@ -76,27 +75,30 @@ class Song:
         #Declare field member voices
         self._voices = [[],[]]
 
-        #Declare field member bpm if applicable
+        #Declare field member bpm if provided
         if(bpm != None):
             if(type(bpm) != int): raise ValueError("bpm must be an int")
             else: self._bpm = bpm
 
-        #Declare field member byte_string if applicable
+        #Declare field member byte_string if provided
         if(byte_string != None):
+            #Check for invalid byte_string
             if(type(byte_string) != str):
                 raise ValueError("byte_sring must be an str")
             elif(remainder(len(byte_string[2:]), 12) != 0):
                 raise ValueError("Invalid byte_sring argument")
+            
+            #Convert byte string into segmented data
             else:
                 self.byte_string = byte_string
                 self._bpm = int(byte_string[:2], base=16)
-                for i in range(int(len(byte_string[2:]) / 12)):
+                for i in range(int(len(byte_string[2:]) / 8)):
                     for j in range(2):
                         tone_val = int((
-                        byte_string[2 + j * 6 + i * 12:])[:2], base=16)
+                        byte_string[2 + j * 4 + i * 8:])[:2], base=16)
                         
                         beat_val = int((
-                        byte_string[4 + j * 6 + i * 12:])[:4], base=16)
+                        byte_string[3 + j * 4 + i * 8:])[:3], base=16)
                         
                         if(beat_val == 0): continue
                         self._voices[j].append([tone_val, beat_val])
@@ -108,7 +110,7 @@ class Song:
             raise ValueError("Voice num must be 1 or 2") 
         if note > 61 or note < 0:
             raise ValueError("Note argument exceeds 2-7 octave range")
-        if length > 0xffff:
+        if length > 255:
             raise ValueError("Note Length argument is too long")
         if length < 0:
             raise ValueError("Note Length cannot be negative")
@@ -132,7 +134,7 @@ class Song:
             raise ValueError("Voice num must be 1 or 2") 
         if note > 61 or note < 0:
             raise ValueError("Note argument exceeds 2-7 octave range")
-        if length > 0xffff:
+        if length > 255:
             raise ValueError("Note Length argument is too long")
         if length < 0:
             raise ValueError("Note Length cannot be negative")
@@ -173,7 +175,7 @@ class Song:
 
                 #Skip rest of code and print "empty" if empty
                 if(len(self._voices[j]) - 1 < i):
-                    print(f"Empty".ljust(38), end='')
+                    print(f"Empty".ljust(42), end='')
                     continue
 
                 #Rest note print
@@ -216,26 +218,18 @@ class Song:
             #Print each segment
             print(f"Segment {i + 1}:", end='')
             for j in range(2):
+                #If empty, print and add four zeros instead
                 if len(self._voices[j]) - 1 < i:
-                    print(f" 00 0000", end='')
-                    byte_string += "000000"
+                    print(f" 00 00", end='')
+                    byte_string += "0000"
                     continue
+                #Add each value to a byte string in hex
                 for k in range(2):
-                    if k == 0:
-                        #Convert tone value to hex
-                        byte_string += self._voices[j][i][k].to_bytes().hex()
+                    #Convert value to hex
+                    byte_string += self._voices[j][i][k].to_bytes().hex()
 
-                        #Print tone value in hex
-                        print(f" {self._voices[j][i][k].to_bytes().hex()}", end='')
-                    elif k == 1:
-                        #Converted to a string and rejoined to mitigate overflow
-                        bit_string = str(bin(self._voices[j][i][k])[2:].zfill(16))
-                        bit_string_a = int(bit_string[8:], base = 2).to_bytes().hex()
-                        bit_string_b = int(bit_string[:8], base = 2).to_bytes().hex()
-                        byte_string += bit_string_b + bit_string_a
-
-                        #Print duration value in hex
-                        print(f" {bit_string_b + bit_string_a}", end='')
+                    #Print value in hex
+                    print(f" {self._voices[j][i][k].to_bytes().hex()}", end='')
             print(end='\n')
         print(end='\n')
 
