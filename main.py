@@ -205,7 +205,7 @@ class Song:
             print(end='\n')
 
     #Method to return a hex dump representation of the song
-    def hex_dump(self, song_name: str):
+    def hex_dump(self):
         #Convert bpm to hex
         byte_string = self._bpm.to_bytes().hex()
 
@@ -235,10 +235,6 @@ class Song:
 
         #Convert to bytearray
         byte_string = bytearray.fromhex(byte_string)
-
-        #Write byte_string to binary file of class instance name
-        file = open(f"{song_name}.bin", "wb")
-        file.write(byte_string)
 
         #Return bytearray byte_string
         return byte_string
