@@ -54,7 +54,7 @@ class TONAL_VAL(IntEnum):
     A_NATURAL = auto()
     A_SHARP = auto()
     B_NATURAL = auto()
-    REST = 61
+    REST = 73
 
 class BEAT(IntEnum):
     NOTE_1 = 32
@@ -65,28 +65,22 @@ class BEAT(IntEnum):
     NOTE_32 = 1
 
 class Song:
-    def __init__(self, bpm = None, byte_string = None):
-        #Check if too little or too many arguments provided
-        if(bpm == None and byte_string == None):
-            raise ValueError("No arguments provided")
-        elif(bpm != None and byte_string != None):
-            raise ValueError("Too many arguments provided")
+    def __init__(self, bpm: None | int = None, byte_string: None | str = None):
+        #Verify that only one of the two arguments, bpm and byte_string, are provided
+        if not ((bpm == None) ^ (byte_string == None)):
+            raise ValueError("Must provide only either bpm or byte_string argument")
 
         #Declare field member voices
         self._voices = [[],[]]
 
         #Declare field member bpm if provided
-        if(bpm != None):
-            if(type(bpm) != int): raise ValueError("bpm must be an int")
-            else: self._bpm = bpm
+        if(bpm != None): self._bpm = bpm
 
         #Declare field member byte_string if provided
-        if(byte_string != None):
+        elif(byte_string != None):
             #Check for invalid byte_string
-            if(type(byte_string) != str):
-                raise ValueError("byte_sring must be an str")
-            elif(remainder(len(byte_string[2:]), 12) != 0):
-                raise ValueError("Invalid byte_sring argument")
+            if(remainder(len(byte_string[2:]), 12) != 0):
+                raise ValueError("Invalid byte_string argument")
             
             #Convert byte string into segmented data
             else:
@@ -108,7 +102,7 @@ class Song:
         #Check for invalid arguments
         if voice_num != 1 and voice_num != 2:
             raise ValueError("Voice num must be 1 or 2") 
-        if note > 61 or note < 0:
+        if note > TONAL_VAL.REST or note < 0:
             raise ValueError("Note argument exceeds 2-7 octave range")
         if length > 255:
             raise ValueError("Note Length argument is too long")
@@ -122,10 +116,12 @@ class Song:
             raise ValueError("Octave argument exceeds 2-7 range")
 
         #Condition for rest notes
-        if note == TONAL_VAL.REST: self._voices[voice_num - 1].append([note, length])
+        if note == TONAL_VAL.REST:
+            self._voices[voice_num - 1].append([note, length])
 
         #Scale non rest-note value by twelve notes according to octave and push data
-        else: self._voices[voice_num - 1].append([note + (octave - 2) * 12, length])
+        else:
+            self._voices[voice_num - 1].append([note + (octave - 2) * 12, length])
 
     #Method to add a note value segment to either voice
     def insert_segment(self, seg_num, voice_num, note, length, octave = None):
@@ -179,7 +175,7 @@ class Song:
                     continue
 
                 #Rest note print
-                if(self._voices[j][i][0] == 61):
+                if(self._voices[j][i][0] == TONAL_VAL.REST):
                     print(TONAL_VAL(self._voices[j][i][0])._name_.ljust(10),
                     end='')
 
@@ -189,13 +185,13 @@ class Song:
                     end='')
 
                 #Octave print
-                if(self._voices[j][i][0] != 61):
-                    print(("Octave-" + str(floor(self._voices[j][i][0] / 12) + 2)
-                    ).ljust(10), end='')
+                if(self._voices[j][i][0] != TONAL_VAL.REST):
+                    print(("Octave-" +
+                    str(floor(self._voices[j][i][0] / 12) + 2)).ljust(10), end='')
                 else: print("".ljust(10), end='')
 
                 #Note duration print
-                if(remainder(log2(self._voices[j][i][1]), 1) == 0):
+                if(remainder(log2(self._voices[j][i][1]), 1) == 0 and self._voices[j][i][1] <= 32):
                     print(f"Duration-{BEAT(self._voices[j][i][1])._name_}".ljust(22),
                     end='')
                 else:
@@ -205,7 +201,7 @@ class Song:
             print(end='\n')
 
     #Method to return a hex dump representation of the song
-    def hex_dump(self):
+    def hex_dump(self) -> bytearray:
         #Convert bpm to hex
         byte_string = self._bpm.to_bytes().hex()
 
@@ -236,5 +232,150 @@ class Song:
         #Convert to bytearray
         byte_string = bytearray.fromhex(byte_string)
 
+        """
+        print("const uint8_t baby_shark[" + str(len(byte_string) + 4) + "] = {", end='')
+        for i in range(len(byte_string)):
+            print(str(hex(byte_string[i])) + ", ", end='')
+        print("0x0, 0x0, 0x0, 0x0};\n")
+        """
+
         #Return bytearray byte_string
         return byte_string
+
+"""
+baby_shark = Song(bpm=115)
+
+baby_shark.push_segment(1, TONAL_VAL.D_NATURAL, BEAT.NOTE_4, 5)
+baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_4, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.D_NATURAL, BEAT.NOTE_8, 5)
+baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_8, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.D_NATURAL, BEAT.NOTE_8, 5)
+baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_8, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_16, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.REST, BEAT.NOTE_32, 5)
+baby_shark.push_segment(1, TONAL_VAL.F_SHARP, BEAT.NOTE_2, 5)
+
+################################################################################
+
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_2)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 4)
+
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_8, 4)
+baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_16, 4)
+
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 4)
+
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_8, 4)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 3)
+
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.B_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(2, TONAL_VAL.B_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
+
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16 + BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32) 
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_32, 3)
+baby_shark.push_segment(2, TONAL_VAL.REST, BEAT.NOTE_32)
+baby_shark.push_segment(2, TONAL_VAL.B_NATURAL, BEAT.NOTE_16, 3)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_8, 4)
+baby_shark.push_segment(2, TONAL_VAL.B_NATURAL, BEAT.NOTE_16, 3)
+
+baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_2, 4)
+"""
+"""
+baby_shark.push_segment(1, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 4)
+baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
+
+baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
+baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 5)
+"""
+"""
+baby_shark.hex_dump()
+baby_shark.print_song()
+"""
