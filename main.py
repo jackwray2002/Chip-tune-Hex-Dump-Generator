@@ -260,15 +260,17 @@ class Song:
         #Convert to bytearray
         byte_string = bytearray.fromhex(byte_string)
 
+        """
         print("const uint8_t baby_shark[" + str(len(byte_string) + 4) + "] = {", end='')
         for i in range(len(byte_string)):
             print(str(hex(byte_string[i])) + ", ", end='')
         print("0x0, 0x0, 0x0, 0x0};\n")
+        """
 
         #Return bytearray byte_string
         return byte_string
 
-
+"""
 baby_shark = Song(bpm=115)
 
 baby_shark.push_segment(1, TONAL_VAL.D_NATURAL, BEAT.NOTE_4, 5)
@@ -390,17 +392,6 @@ baby_shark.push_segment(2, TONAL_VAL.B_NATURAL, BEAT.NOTE_16, 3)
 
 baby_shark.push_segment(2, TONAL_VAL.D_NATURAL, BEAT.NOTE_2, 4)
 
-
-baby_shark.push_segment(1, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 4)
-baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
-baby_shark.push_segment(1, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 4)
-baby_shark.push_segment(1, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 4)
-
-baby_shark.push_segment(2, TONAL_VAL.C_NATURAL, BEAT.NOTE_16, 5)
-baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 5)
-baby_shark.push_segment(2, TONAL_VAL.G_NATURAL, BEAT.NOTE_16, 5)
-baby_shark.push_segment(2, TONAL_VAL.E_NATURAL, BEAT.NOTE_16, 5)
-
-
 baby_shark.hex_dump()
 baby_shark.print_song()
+"""
